@@ -1,0 +1,9 @@
+[package]
+name = "ascm"
+description = "Crate for work with .ascm (ASCII-Motions) filescargo publish --dry-run"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+flate2 = "1.1.9"
+tempfile = "3.27.0"
