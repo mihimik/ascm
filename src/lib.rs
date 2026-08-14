@@ -88,7 +88,7 @@ pub struct ColorPair {
 }
 
 impl ColorPair {
-    fn default() -> ColorPair {
+    pub fn default() -> ColorPair {
         Self {
             fg: 0,
             bg: 0,
