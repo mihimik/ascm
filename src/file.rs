@@ -1,5 +1,6 @@
 use std::io::{self, Write, Read};
-use crate::graphics::{ColorPair, DeltaCommand, Frame, FrameType, Pixel};
+use crate::{Frame, ColorPair};
+use crate::graphics::{DeltaCommand, FrameType, Pixel};
 use super::*;
 
 impl Header {

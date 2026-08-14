@@ -1,22 +1,7 @@
 use std::cmp::PartialEq;
-use crate::Header;
+use crate::{Header, Frame, ColorPair};
 use std::mem::size_of;
 use std::collections::HashMap;
-
-#[derive(PartialEq, Copy, Clone)]
-pub struct ColorPair {
-    pub fg: u8,
-    pub bg: u8,
-}
-
-impl ColorPair {
-    fn default() -> ColorPair {
-        Self {
-            fg: 0,
-            bg: 0,
-        }
-    }
-}
 
 const AVERAGE_COMMAND_SIZE: usize = 7;
 
@@ -76,21 +61,6 @@ impl FrameType {
             Some(k)
         } else {
             None
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct Frame {
-    pub delay_ms: u32,
-    pub frame_type: FrameType,
-}
-
-impl Frame {
-    pub fn default(resolution: (u8, u8)) -> Frame {
-        Self {
-            delay_ms: 1,
-            frame_type: FrameType::Keyframe(Keyframe::default(resolution)),
         }
     }
 }
@@ -162,4 +132,26 @@ pub fn compare_frames(header: &Header, frame1: &Keyframe, frame2: &Keyframe) -> 
     }
 
     FrameType::Keyframe(frame2.clone())
+}
+
+pub fn optimize_frames(header: Header, mut frames: Vec<Frame>) -> Vec<Frame> {
+    let mut last_frame = Frame::default((header.width, header.height));
+    let mut optimized_frames: Vec<Frame> = Vec::new();
+
+    for (i, frame) in frames.iter_mut().enumerate() {
+        if let FrameType::Keyframe(ref keyframe) = last_frame.frame_type {
+
+            if i == 0 {
+                optimized_frames.push(frame.clone());
+                last_frame = frame.clone();
+            } else {
+                let mut new_frame = frame.clone();
+                new_frame.frame_type = compare_frames(&header, &last_frame.frame_type.as_keyframe().expect("Frame must be Keyframe"), &keyframe);
+                optimized_frames.push(new_frame);
+                last_frame = frame.clone();
+            }
+        }
+    }
+
+    optimized_frames
 }
