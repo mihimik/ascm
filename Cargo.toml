@@ -1,7 +1,7 @@
 [package]
 name = "ascm"
 description = "Crate for work with .ascm (ASCII-Motions) filescargo publish --dry-run"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2024"
 license-file = "LICENSE"
 

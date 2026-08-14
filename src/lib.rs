@@ -81,7 +81,7 @@ impl Frame {
     }
 }
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Debug, Default)]
 pub struct ColorPair {
     pub fg: u8,
     pub bg: u8,
