@@ -93,7 +93,7 @@ impl Frame {
     }
 }
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Default)]
 pub struct Pixel {
     pub symbol: char,
     pub color: ColorPair,
@@ -102,13 +102,6 @@ pub struct Pixel {
 impl Pixel {
     pub fn new(symbol: char, color: ColorPair) -> Pixel {
         Pixel { symbol, color }
-    }
-
-    pub fn default() -> Pixel {
-        Self {
-            symbol: char::default(),
-            color: ColorPair::default(),
-        }
     }
 }
 
