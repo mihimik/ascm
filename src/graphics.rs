@@ -2,6 +2,7 @@ use std::cmp::PartialEq;
 use crate::{Header, Frame, ColorPair};
 use std::mem::size_of;
 use std::collections::HashMap;
+use crate::Pixel;
 
 const AVERAGE_COMMAND_SIZE: usize = 7;
 
@@ -12,25 +13,6 @@ pub enum DeltaCommand {
     FillCol { x: u8, y: u8, length: u8, ch: char, fg: u8, bg: u8 },
     CopyRegion { src_x: u8, src_y: u8, dst_x: u8, dst_y: u8, w: u8, h: u8 },
     ClearRegion { x: u8, y: u8, w: u8, h: u8 },
-}
-
-#[derive(PartialEq, Copy, Clone)]
-pub struct Pixel {
-    pub symbol: char,
-    pub color: ColorPair,
-}
-
-impl Pixel {
-    pub fn new(symbol: char, color: ColorPair) -> Pixel {
-        Pixel { symbol, color }
-    }
-
-    pub fn default() -> Pixel {
-        Self {
-            symbol: char::default(),
-            color: ColorPair::default(),
-        }
-    }
 }
 
 #[derive(Clone)]

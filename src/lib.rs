@@ -1,6 +1,7 @@
 mod graphics;
 mod file;
 
+use std::collections::HashMap;
 use flate2::write::GzEncoder;
 use flate2::read::GzDecoder;
 use flate2::Compression;
@@ -77,6 +78,36 @@ impl Frame {
         Self {
             delay_ms: 1,
             frame_type: FrameType::Keyframe(Keyframe::default(resolution)),
+        }
+    }
+
+    pub fn from_pixels(pixels: HashMap<(u16, u16), Pixel>, delay_ms: u32) -> Frame {
+        let keyframe = Keyframe {
+            pixels: pixels.values().copied().collect(),
+        };
+
+        Frame {
+            delay_ms,
+            frame_type: FrameType::Keyframe(keyframe),
+        }
+    }
+}
+
+#[derive(PartialEq, Copy, Clone)]
+pub struct Pixel {
+    pub symbol: char,
+    pub color: ColorPair,
+}
+
+impl Pixel {
+    pub fn new(symbol: char, color: ColorPair) -> Pixel {
+        Pixel { symbol, color }
+    }
+
+    pub fn default() -> Pixel {
+        Self {
+            symbol: char::default(),
+            color: ColorPair::default(),
         }
     }
 }
