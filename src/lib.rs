@@ -2,6 +2,7 @@ mod graphics;
 mod file;
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use flate2::write::GzEncoder;
 use flate2::read::GzDecoder;
 use flate2::Compression;
@@ -31,10 +32,10 @@ impl Header {
     }
 }
 
-pub fn create_file(name: String, width: u8, height: u8, frames: Vec<Frame>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn create_file(path: PathBuf, width: u8, height: u8, frames: Vec<Frame>) -> Result<(), Box<dyn std::error::Error>> {
     let header = Header::new(width, height);
 
-    let file = std::fs::File::create(format!("{}.ascm", name))?;
+    let file = std::fs::File::create(path)?;
     let mut encoder = GzEncoder::new(file, Compression::default());
     let raw_frames = optimize_frames(header.clone(), frames);
 
