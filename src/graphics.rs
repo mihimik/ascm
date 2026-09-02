@@ -10,7 +10,7 @@ const AVERAGE_COMMAND_SIZE: usize = 7;
 pub enum DeltaCommand {
     UpdatePixel { x: u8, y: u8, ch: char, fg: u8, bg: u8 },
     FillRow { x: u8, y: u8, length: u8, ch: char, fg: u8, bg: u8 },
-    FillCol { x: u8, y: u8, length: u8, ch: char, fg: u8, bg: u8 },
+    // FillCol { x: u8, y: u8, length: u8, ch: char, fg: u8, bg: u8 },
     CopyRegion { src_x: u8, src_y: u8, dst_x: u8, dst_y: u8, w: u8, h: u8 },
     ClearRegion { x: u8, y: u8, w: u8, h: u8 },
 }

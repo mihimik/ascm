@@ -9,6 +9,8 @@ use flate2::Compression;
 use crate::graphics::{optimize_frames, FrameType, Keyframe};
 use crate::graphics::FrameType::Keyframe as KeyframeType;
 
+const COMPRESSION_MARKER: u8 = 0x1E;
+
 #[derive(Debug, Clone)]
 pub struct Header {
     pub magic_bytes: [u8; 4],
@@ -49,8 +51,8 @@ pub fn create_file(path: PathBuf, width: u8, height: u8, frames: Vec<Frame>) -> 
     Ok(())
 }
 
-pub fn read_file(name: String) -> Result<(Header, Vec<Frame>), Box<dyn std::error::Error>> {
-    let file = std::fs::File::open(format!("{}.ascm", name))?;
+pub fn read_file(path: PathBuf) -> Result<(Header, Vec<Frame>), Box<dyn std::error::Error>> {
+    let file = std::fs::File::open(path)?;
     let mut decoder = GzDecoder::new(file);
     let header = Header::read_from(&mut decoder)?;
 
@@ -83,8 +85,46 @@ impl Frame {
     }
 
     pub fn from_pixels(pixels: HashMap<(u16, u16), Pixel>, delay_ms: u32) -> Frame {
+        let mut pairs: Vec<((u16, u16), Pixel)> = pixels.into_iter().collect();
+        pairs.sort_unstable_by_key(|&((x, y), _)| (y, x));
+
+        let ordered_pixels: Vec<Pixel> = pairs.into_iter().map(|(_, pixel)| pixel).collect();
+        let mut optimized_pixels: Vec<Pixel> = Vec::new();
+
+        let mut i = 0;
+        while i < ordered_pixels.len() {
+            let current_pixel = &ordered_pixels[i];
+
+            if current_pixel.symbol == ' ' && current_pixel.color.fg == 0 && current_pixel.color.bg == 0 {
+                let mut space_count = 1;
+
+                while i + space_count < ordered_pixels.len()
+                    && ordered_pixels[i + space_count].symbol == ' '
+                    && ordered_pixels[i + space_count].color.fg == 0
+                    && ordered_pixels[i + space_count].color.bg == 0
+                    && space_count < 255
+                {
+                    space_count += 1;
+                }
+
+                let marker_pixel = Pixel {
+                    symbol: '\x1e',
+                    color: ColorPair {
+                        fg: space_count as u8,
+                        bg: 0,
+                    },
+                };
+
+                optimized_pixels.push(marker_pixel);
+                i += space_count;
+            } else {
+                optimized_pixels.push(current_pixel.clone());
+                i += 1;
+            }
+        }
+
         let keyframe = Keyframe {
-            pixels: pixels.values().copied().collect(),
+            pixels: ordered_pixels,
         };
 
         Frame {
@@ -104,6 +144,7 @@ impl Pixel {
     pub fn new(symbol: char, color: ColorPair) -> Pixel {
         Pixel { symbol, color }
     }
+    pub fn space() -> Pixel { Pixel { symbol: ' ', color: ColorPair::default() } }
 }
 
 #[derive(PartialEq, Copy, Clone, Debug, Default)]
@@ -113,9 +154,16 @@ pub struct ColorPair {
 }
 
 impl ColorPair {
-    pub fn default() -> ColorPair {
+    pub fn white() -> ColorPair {
         Self {
-            fg: 0,
+            fg: 15,
+            bg: 0,
+        }
+    }
+
+    pub fn black() -> ColorPair {
+        Self {
+            fg: 16,
             bg: 0,
         }
     }
