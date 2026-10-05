@@ -40,7 +40,7 @@ dependencies = [
 
 [[package]]
 name = "ascm"
-version = "0.3.0"
+version = "1.0.0"
 dependencies = [
  "flate2",
  "ratatui",
