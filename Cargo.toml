@@ -1,10 +1,16 @@
 [package]
 name = "ascm"
 description = "Crate for work with .ascm (ASCII-Motions) filescargo publish --dry-run"
-version = "0.3.0"
+version = "1.0.0"
 edition = "2024"
 license-file = "LICENSE"
 
 [dependencies]
 flate2 = "1.1.9"
+ratatui = { version = "0.30.2", optional = true }
+tokio = { version = "1.53.1", default-features = false, features = ["time"] }
 tempfile = "3.27.0"
+
+[features]
+default = []
+ratatui = ["dep:ratatui"]

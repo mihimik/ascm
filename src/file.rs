@@ -142,18 +142,33 @@ impl Frame {
                 let total_pixels = (header.width as usize) * (header.height as usize);
                 let mut pixels = Vec::with_capacity(total_pixels);
 
-                for _ in 0..total_pixels {
+                while pixels.len() < total_pixels {
                     let ch = read_char(reader)?;
-                    let mut col_buf = [0u8; 2];
-                    reader.read_exact(&mut col_buf)?;
 
-                    pixels.push(Pixel {
-                        symbol: ch,
-                        color: ColorPair {
-                            fg: col_buf[0],
-                            bg: col_buf[1],
-                        },
-                    })
+                    if ch == '\x1e' {
+                        let mut rle_buf = [0u8; 2];
+                        reader.read_exact(&mut rle_buf)?;
+
+                        let space_count = rle_buf[0] as usize;
+
+                        for _ in 0..space_count {
+                            pixels.push(Pixel {
+                                symbol: ' ',
+                                color: ColorPair { fg: 0, bg: 0 },
+                            });
+                        }
+                    } else {
+                        let mut col_buf = [0u8; 2];
+                        reader.read_exact(&mut col_buf)?;
+
+                        pixels.push(Pixel {
+                            symbol: ch,
+                            color: ColorPair {
+                                fg: col_buf[0],
+                                bg: col_buf[1],
+                            },
+                        });
+                    }
                 }
 
                 FrameType::Keyframe(Keyframe { pixels })
@@ -173,7 +188,7 @@ impl Frame {
             _ => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
-                    format!("Неизвестный тип кадра: {}", type_byte[0]),
+                    format!("Unknown frame type: {}", type_byte[0]),
                 ));
             }
         };

@@ -1,5 +1,9 @@
 mod graphics;
 mod file;
+pub mod integrations;
+
+#[cfg(feature = "ratatui")]
+pub use integrations::ratatui_impl::AscmView;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -7,9 +11,8 @@ use flate2::write::GzEncoder;
 use flate2::read::GzDecoder;
 use flate2::Compression;
 use crate::graphics::{optimize_frames, FrameType, Keyframe};
-use crate::graphics::FrameType::Keyframe as KeyframeType;
 
-const COMPRESSION_MARKER: u8 = 0x1E;
+// const COMPRESSION_MARKER: u8 = 0x1E;
 
 #[derive(Debug, Clone)]
 pub struct Header {
@@ -70,7 +73,7 @@ pub fn read_file(path: PathBuf) -> Result<(Header, Vec<Frame>), Box<dyn std::err
     Ok((header, frames))
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Frame {
     pub delay_ms: u32,
     pub frame_type: FrameType,
@@ -124,7 +127,7 @@ impl Frame {
         }
 
         let keyframe = Keyframe {
-            pixels: ordered_pixels,
+            pixels: optimized_pixels,
         };
 
         Frame {
@@ -134,7 +137,7 @@ impl Frame {
     }
 }
 
-#[derive(PartialEq, Copy, Clone, Default)]
+#[derive(PartialEq, Copy, Clone, Default, Debug)]
 pub struct Pixel {
     pub symbol: char,
     pub color: ColorPair,

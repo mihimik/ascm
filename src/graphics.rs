@@ -1,7 +1,5 @@
-use std::cmp::PartialEq;
 use crate::{Header, Frame, ColorPair};
 use std::mem::size_of;
-use std::collections::HashMap;
 use crate::Pixel;
 
 const AVERAGE_COMMAND_SIZE: usize = 7;
@@ -15,7 +13,7 @@ pub enum DeltaCommand {
     ClearRegion { x: u8, y: u8, w: u8, h: u8 },
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Keyframe {
     pub pixels: Vec<Pixel>,
 }
@@ -29,7 +27,7 @@ impl Keyframe {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum FrameType {
     Keyframe(Keyframe),
     Delta {
@@ -45,27 +43,63 @@ impl FrameType {
             None
         }
     }
+
+    pub fn as_delta(&self) -> Option<&Vec<DeltaCommand>> {
+        if let FrameType::Delta { commands } = self {
+            Some(commands)
+        } else {
+            None
+        }
+    }
 }
 
 pub fn get_commands_limit(header: &Header) -> usize {
-    let pixels = (header.width * header.height) as usize;
+    let pixels = header.width as usize * header.height as usize;
     let image_size = (size_of::<char>() + size_of::<ColorPair>()) * pixels;
 
     image_size / AVERAGE_COMMAND_SIZE
 }
 
+fn unpack_keyframe_to_dense(header: &Header, keyframe: &Keyframe) -> Vec<Pixel> {
+    let total_size = (header.width as usize) * (header.height as usize);
+    let mut dense_pixels = Vec::with_capacity(total_size);
+
+    for pixel in &keyframe.pixels {
+        if pixel.symbol == '\x1e' {
+            let space_count = pixel.color.fg as usize;
+            for _ in 0..space_count {
+                dense_pixels.push(Pixel {
+                    symbol: ' ',
+                    color: ColorPair { fg: 0, bg: 0 },
+                });
+            }
+        } else {
+            dense_pixels.push(*pixel);
+        }
+    }
+
+    while dense_pixels.len() < total_size {
+        dense_pixels.push(Pixel::space());
+    }
+
+    dense_pixels
+}
+
 pub fn compare_frames(header: &Header, frame1: &Keyframe, frame2: &Keyframe) -> FrameType {
     let mut commands: Vec<DeltaCommand> = Vec::new();
 
+    let pixels1 = unpack_keyframe_to_dense(header, frame1);
+    let pixels2 = unpack_keyframe_to_dense(header, frame2);
+
     for y in 0..header.height {
-        let mut last_pixel = Pixel::default();
+        let mut last_pixel = &Pixel::default();
         let mut length = 0;
 
         for x in 0..header.width {
-            let number = (y * header.width + x) as usize;
+            let number = (y as usize) * header.width as usize + (x as usize);
 
-            let pixel1 = frame1.pixels[number];
-            let pixel2 = frame2.pixels[number];
+            let pixel1 = &pixels1[number];
+            let pixel2 = &pixels2[number];
 
             if pixel1 != pixel2 {
                 if length == 0 {
@@ -117,23 +151,53 @@ pub fn compare_frames(header: &Header, frame1: &Keyframe, frame2: &Keyframe) -> 
 }
 
 pub fn optimize_frames(header: Header, mut frames: Vec<Frame>) -> Vec<Frame> {
-    let mut last_frame = Frame::default((header.width, header.height));
+    if frames.is_empty() {
+        return frames;
+    }
+
     let mut optimized_frames: Vec<Frame> = Vec::new();
 
-    for (i, frame) in frames.iter_mut().enumerate() {
-        if let FrameType::Keyframe(ref keyframe) = last_frame.frame_type {
+    let mut last_keyframe = match &frames[0].frame_type {
+        FrameType::Keyframe(kf) => kf.clone(),
+        _ => panic!("First frame must be a Keyframe!"),
+    };
 
-            if i == 0 {
-                optimized_frames.push(frame.clone());
-                last_frame = frame.clone();
-            } else {
-                let mut new_frame = frame.clone();
-                new_frame.frame_type = compare_frames(&header, &last_frame.frame_type.as_keyframe().expect("Frame must be Keyframe"), &keyframe);
-                optimized_frames.push(new_frame);
-                last_frame = frame.clone();
-            }
+    optimized_frames.push(frames[0].clone());
+
+    for i in 1..frames.len() {
+        let current_frame = &frames[i];
+
+        if let FrameType::Keyframe(ref current_keyframe) = current_frame.frame_type {
+            let new_frame_type = compare_frames(&header, &last_keyframe, current_keyframe);
+
+            let mut optimized_frame = current_frame.clone();
+            optimized_frame.frame_type = new_frame_type;
+            optimized_frames.push(optimized_frame);
+
+            last_keyframe = current_keyframe.clone();
+        } else {
+            optimized_frames.push(current_frame.clone());
         }
     }
 
     optimized_frames
+}
+
+pub fn convert_commands_to_vec(commands: &Vec<DeltaCommand>) -> Vec<(Pixel, (u8, u8))> {
+    let mut pixels = Vec::new();
+
+    for command in commands {
+        match *command {
+            DeltaCommand::UpdatePixel { x, y, ch, fg, bg } => {
+                pixels.push((Pixel::new(ch, ColorPair{ fg, bg }), (x, y)));
+            },
+            DeltaCommand::FillRow { x, y, length, ch, fg, bg } => {
+                let pixel = Pixel::new(ch, ColorPair { fg, bg });
+                pixels.extend((0..length).map(|i| (pixel.clone(), (x + i, y))));
+            },
+            _ => {}
+        }
+    }
+
+    pixels
 }
